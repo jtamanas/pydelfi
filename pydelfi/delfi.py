@@ -272,7 +272,7 @@ class Delfi():
             ps = np.array([theta_optimal for k in range(n_batch)])
             
             # Run a small batch of simulations at the acquisition point
-            xs_batch, ps_batch = self.run_simulation_batch(n_batch, ps, simulator, compressor, simulator_args, compressor_args, seed_generator = seed_generator, sub_batch = sub_batch)
+            xs_batch, ps_batch = self.run_simulation_batch(n_batch, ps, simulator, compressor, simulator_args, compressor_args, seed_generator = seed_generator, sub_batch = sub_batch, nan_warning=nan_warning)
             
             # Augment the training data
             self.add_simulations(xs_batch, ps_batch)
@@ -290,7 +290,7 @@ class Delfi():
                 self.saver()
     
     # Run n_batch simulations
-    def run_simulation_batch(self, n_batch, ps, simulator, compressor, simulator_args, compressor_args, seed_generator = None, sub_batch = 1):
+    def run_simulation_batch(self, n_batch, ps, simulator, compressor, simulator_args, compressor_args, seed_generator = None, sub_batch = 1, nan_warning=False):
         
         # Random seed generator: set to unsigned 32 bit int random numbers as default
         if seed_generator is None:
@@ -322,7 +322,8 @@ class Delfi():
                     if self.progress_bar:
                         pbar.update(1)
                 else:
-                    print(err_msg.format('NaN/inf', ps[i_prop,:], self.rank))
+                    if nan_warning:
+                        print(err_msg.format('NaN/inf', ps[i_prop,:], self.rank))
             except:
                 print(err_msg.format('exception', ps[i_prop,:], self.rank))
             i_prop += 1
@@ -376,7 +377,7 @@ class Delfi():
     def sequential_training(self, simulator, compressor, n_initial, n_batch, n_populations, proposal = None, \
                             simulator_args = None, compressor_args = None, safety = 5, plot = True, batch_size = 100, \
                             validation_split = 0.1, epochs = 300, patience = 20, seed_generator = None, \
-                            save_intermediate_posteriors = True, sub_batch = 1):
+                            save_intermediate_posteriors = True, sub_batch = 1, nan_warning=True):
 
         # Set up the initial parameter proposal density
         if proposal is None:
@@ -403,7 +404,7 @@ class Delfi():
         self.inds_acpt = self.allocate_jobs(n_initial)
 
         # Run simulations at those theta values
-        xs_batch, ps_batch = self.run_simulation_batch(n_initial, ps, simulator, compressor, simulator_args, compressor_args, seed_generator = seed_generator, sub_batch = sub_batch)
+        xs_batch, ps_batch = self.run_simulation_batch(n_initial, ps, simulator, compressor, simulator_args, compressor_args, seed_generator = seed_generator, sub_batch = sub_batch, nan_warning=True)
 
         # Train on master only
         if self.rank == 0:
@@ -469,7 +470,7 @@ class Delfi():
             # Run simulations
             self.inds_prop = self.allocate_jobs(safety * n_batch)
             self.inds_acpt = self.allocate_jobs(n_batch)
-            xs_batch, ps_batch = self.run_simulation_batch(n_batch, ps_batch, simulator, compressor, simulator_args, compressor_args, seed_generator = seed_generator, sub_batch = sub_batch)
+            xs_batch, ps_batch = self.run_simulation_batch(n_batch, ps_batch, simulator, compressor, simulator_args, compressor_args, seed_generator = seed_generator, sub_batch = sub_batch, nan_warning=False)
 
             # Train on master only
             if self.rank == 0:
